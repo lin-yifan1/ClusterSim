@@ -25,8 +25,18 @@ class TrafficManager:
             "intervals": intervals,
             "T": T,
         }
-        self.link_traffic_pattern[link][job_name] = pattern
-        self.job_time_period[job_name] = [start_time, end_time]
+        if job_name not in self.link_traffic_pattern[link]:
+            self.link_traffic_pattern[link][job_name] = pattern
+            self.job_time_period[job_name] = [start_time, end_time]
+        else:
+            # if job_name already has flow going through the link
+            # then modify intervals
+            intervals = []
+            for interval in self.link_traffic_pattern[link][job_name]["intervals"]:
+                low, high = interval
+                length = high - low
+                intervals.append([low - (high - low), high])
+            self.link_traffic_pattern[link][job_name]["intervals"] = intervals
 
     def get_traffic_pattern(self, link: Link):
         return self.link_traffic_pattern[link]

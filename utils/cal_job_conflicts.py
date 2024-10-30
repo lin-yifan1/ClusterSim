@@ -11,14 +11,14 @@ def cal_overlap(
     current_time,
     new_time,
 ):
-    # calculate overlap between two jobs in a given time period
+    # calculate overlap between two jobs in a given time period (estimated)
     intervals_1 = pattern_1["intervals"]
     T_1 = pattern_1["T"]
     intervals_2 = pattern_2["intervals"]
     T_2 = pattern_2["T"]
 
-    array_1 = np.zeros(new_time - current_time, dtype=int)
-    array_2 = np.zeros(new_time - current_time, dtype=int)
+    array_1 = np.zeros(new_time - current_time, dtype=bool)
+    array_2 = np.zeros(new_time - current_time, dtype=bool)
 
     for start, end in intervals_1:
         while start + start_time_1 < min(end_time_1, new_time):
@@ -45,7 +45,7 @@ def cal_overlap(
                 start += T_2
                 end += T_2
 
-    return int(array_1 @ array_2)
+    return np.sum(array_1 & array_2)
 
 
 def cal_link_job_conflicts(jobs, job_time_period, current_time, new_time):
@@ -54,12 +54,16 @@ def cal_link_job_conflicts(jobs, job_time_period, current_time, new_time):
     # job_time_period: {job_name: (start_time, end_time)}
     # return: {job_name: conflict}
     link_job_conflicts = {job_name: 0 for job_name in jobs.keys()}
+    calculated_pairs = set()
     # Iterate over each job and calculate its conflict within the time range
     for job_name, pattern in jobs.items():
         for other_job_name, other_pattern in jobs.items():
             if other_job_name == job_name:
                 continue
-            link_job_conflicts[job_name] += cal_overlap(
+            pair = frozenset([job_name, other_job_name])
+            if pair in calculated_pairs:
+                continue
+            conflict_value = cal_overlap(
                 pattern,
                 other_pattern,
                 *job_time_period[job_name],
@@ -67,6 +71,9 @@ def cal_link_job_conflicts(jobs, job_time_period, current_time, new_time):
                 current_time,
                 new_time,
             )
+            link_job_conflicts[job_name] += conflict_value
+            link_job_conflicts[other_job_name] += conflict_value
+            calculated_pairs.add(pair)
 
     return link_job_conflicts
 
@@ -77,10 +84,10 @@ def cal_job_conflicts(link_traffic_pattern, job_time_period, current_time, new_t
     # link_traffic_patter: {link: {job_name: pattern}}
     # Return a {job_name: conflict} dict
     job_conflicts = {}
-    for jobs in link_traffic_pattern.values():
+    for link, jobs in link_traffic_pattern.items():
         link_job_conflicts = cal_link_job_conflicts(
             jobs, job_time_period, current_time, new_time
-        )  # # the conflict of each job on a single link {link: {job_name, conflict}}
+        )  # # the conflict of each job on link: {job_name: conflict}}
         for job_name, conflict in link_job_conflicts.items():
             if job_name in job_conflicts:
                 job_conflicts[job_name] = max(job_conflicts[job_name], conflict)

@@ -47,18 +47,20 @@ class Simulator:
             if occupying_job_name == job_name
         ]  # GPUs occupied by job_name
         if params.all_reduce_implement == "ring":
+            # TODO
             link_list = self.topology.ring_link_list(job_gpu_list)
         else:
-            link_list = self.topology.hd_link_list(job_gpu_list)
-        for link in link_list:
-            self.traffic_manager.add_traffic_pattern(
-                link,
-                job_name,
-                pattern["intervals"],
-                pattern["T"],
-                time,
-                time + self.jobs[job_name]["duration"],
-            )
+            gpu_comm_pairs = self.topology.hd_communication_pairs(job_gpu_list)
+            for gpu_pair in gpu_comm_pairs:
+                for link in self.topology.get_gpu_route(*gpu_pair):
+                    self.traffic_manager.add_traffic_pattern(
+                        link,
+                        job_name,
+                        pattern["intervals"],
+                        pattern["T"],
+                        time,
+                        time + self.jobs[job_name]["duration"],
+                    )
 
     def run(self):
         time = 0
@@ -77,11 +79,13 @@ class Simulator:
                     # if deployment success
                     self.allocate_flows(job_name, deploy_time)
                     del self.waiting_jobs[job_name]
+                    print(f"[INFO] Job {job_name} deployed.")
                 else:
                     break
             released_jobs = self.traffic_manager.update_traffic(time_next)
             for job_name in released_jobs:
                 self.gpu_manager.release_gpu(job_name, time_next)
+                print(f"[INFO]Job {job_name} released.")
             if self.method == "ours":
                 solve(self.traffic_manager)
             elif self.method == "cassini":
