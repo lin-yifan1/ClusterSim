@@ -1,7 +1,7 @@
 import random
 import params
 from . import TrafficManager, GPUManager, ClosTopology
-from utils import generate_start_times, sample_from_cdf
+from utils import generate_start_times, sample_from_cdf, sample_from_cdf_continuous
 from solver import solve, solve_by_cassini
 
 
@@ -15,7 +15,7 @@ class Simulator:
     def generate_random_jobs(self):
         job_names = [str(i) for i in range(1, params.job_num + 1)]
         arrival_times = generate_start_times(params.job_num, params.arrival_rate)
-        durations = sample_from_cdf(
+        durations = sample_from_cdf_continuous(
             params.durations, params.cdf_durations, params.job_num
         )
         sizes = sample_from_cdf(params.sizes, params.cdf_sizes, params.job_num)
