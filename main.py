@@ -1,7 +1,6 @@
 from simulate import Simulator
 
 simulator = Simulator()
-simulator.method = "cassini"
 simulator.run()
 
 job_time_period = simulator.traffic_manager.job_time_period  # {job_name: [start, end]}

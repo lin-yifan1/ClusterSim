@@ -10,7 +10,7 @@ class Simulator:
         self.traffic_manager = TrafficManager()
         self.gpu_manager = GPUManager()
         self.topology = ClosTopology()
-        self.method = "ours"  # or "cassini"
+        self.method = "ours"  # "ours", "cassini", or None
 
     def generate_random_jobs(self):
         job_names = [str(i) for i in range(1, params.job_num + 1)]
@@ -84,6 +84,6 @@ class Simulator:
                 self.gpu_manager.release_gpu(job_name, time_next)
             if self.method == "ours":
                 solve(self.traffic_manager)
-            else:
+            elif self.method == "cassini":
                 solve_by_cassini(self.traffic_manager)
             time = time_next  # proceed to the next time window

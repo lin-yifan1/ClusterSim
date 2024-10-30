@@ -1,3 +1,7 @@
+import math
+from natsort import natsorted
+
+
 class Link:
     def __init__(self, start, end):
         self.start = start
@@ -44,6 +48,7 @@ class ClosTopology:
             route.append(Link(f"Server-{server_b}", f"ToR-{tor_a}"))
         else:
             # If servers are under different ToRs, go through a Spine switch
+            # TODO
             spine = (tor_a + tor_b) % self.num_spines  # Deterministic Spine selection
             route.append(Link(f"Server-{server_a}", f"ToR-{tor_a}"))
             route.append(Link(f"ToR-{tor_a}", f"Spine-{spine}"))
@@ -62,7 +67,9 @@ class ClosTopology:
 
     def ring_link_list(self, job_gpu_list):
         # job_gpu_list: list of GPUs occupied by the job
-        server_list = list({self.get_server_for_gpu(gpu) for gpu in job_gpu_list})
+        server_list = natsorted(
+            list({self.get_server_for_gpu(gpu) for gpu in job_gpu_list})
+        )
         if len(server_list) == 1:
             return []
         link_set = set()
@@ -73,7 +80,37 @@ class ClosTopology:
         return list(link_set)
 
     def hd_link_list(self, job_gpu_list):
-        pass
+        # job_gpu_list: list of GPUs occupied by the job
+        # return link list the job occupies for HD AllReduce
+        server_list = natsorted(
+            list({self.get_server_for_gpu(gpu) for gpu in job_gpu_list})
+        )
+        num_servers = len(server_list)
+        if num_servers == 1:
+            return []
+
+        communication_pairs = []
+        r = num_servers - 2 ** (int(math.log2(num_servers)))
+        # Stage 1
+        for i in range(0, r):
+            communication_pairs.append((server_list[2 * i], server_list[2 * i + 1]))
+        removed_servers = [server_list[2 * i + 1] for i in range(0, r)]
+        remain_servers = [
+            server for server in server_list if server not in removed_servers
+        ]
+        # Stage 2
+        step = 1
+        while step < num_servers - r:
+            for i in range(0, num_servers - r, step * 2):
+                for j in range(step):
+                    communication_pairs.append(
+                        (remain_servers[i + j], remain_servers[i + j + step])
+                    )
+            step *= 2
+        link_set = set()
+        for server_1, server_2 in communication_pairs:
+            link_set = link_set.union(set(self.get_route(server_1, server_2)))
+        return list(link_set)
 
 
 if __name__ == "__main__":

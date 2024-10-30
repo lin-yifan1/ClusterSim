@@ -1,4 +1,4 @@
-job_num = 50
+job_num = 100
 arrival_rate = 90000  # time unit
 time_slot = 10  # ms
 update_time_interval = 90000  # time unit
@@ -29,4 +29,4 @@ model_types = {
     "GPT-175B": {"intervals": [[1000 * 100 - 8, 1000 * 100]], "T": 1000 * 100},
 }
 
-all_reduce_implement = "ring"  # or "hd"
+all_reduce_implement = "hd"  # "ring" or "hd"
