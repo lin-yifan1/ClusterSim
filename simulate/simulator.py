@@ -1,5 +1,8 @@
+import os
+import json
 import random
 import params
+from datetime import datetime
 from . import TrafficManager, GPUManager, ClosTopology
 from utils import generate_start_times, sample_from_cdf, sample_from_cdf_continuous
 from solver import solve, solve_by_cassini
@@ -31,7 +34,22 @@ class Simulator:
         }
         self.waiting_jobs = self.jobs.copy()
 
-    def deploy_job(self, job_name, time):
+    def save_jobs_to_json(self, filename=None):
+        if filename is None:
+            current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"jobs_data_{current_time}.json"
+        file_path = os.path.join("save/jobs", filename)
+        if not os.path.exists("save/jobs"):
+            os.makedirs("save/jobs")
+        with open(file_path, "w") as file:
+            json.dump(self.jobs, file, indent=4)
+
+    def load_jobs_from_json(self, file_path):
+        with open(file_path, "r") as file:
+            self.jobs = json.load(file)
+            self.waiting_jobs = self.jobs.copy()
+
+    def deploy_single_job(self, job_name, time):
         return self.gpu_manager.assign_gpu_to_job(
             job_name, self.jobs[job_name]["size"], time
         )
@@ -62,32 +80,40 @@ class Simulator:
                         time + self.jobs[job_name]["duration"],
                     )
 
+    def deploy_jobs(self, time, time_next):
+        job_list = [
+            job_name
+            for job_name, value in self.waiting_jobs.items()
+            if value["arrival_time"] < time_next
+        ]  # jobs arrive before time_next
+        for job_name in job_list:
+            deploy_time = max(self.waiting_jobs[job_name]["arrival_time"], time)
+            if self.deploy_single_job(job_name, deploy_time):
+                # if deployment success
+                self.allocate_flows(job_name, deploy_time)
+                del self.waiting_jobs[job_name]
+                print(f"[INFO] Job {job_name} deployed.")
+            else:
+                break
+
+    def release_job(self, time_next):
+        released_jobs = self.traffic_manager.release_jobs(time_next)
+        for job_name in released_jobs:
+            self.gpu_manager.release_gpu(job_name, time_next)
+            print(f"[INFO]Job {job_name} released.")
+
     def run(self):
         time = 0
-        self.generate_random_jobs()
         while len(self.waiting_jobs) > 0:
             # operate within timewindow: [time, time_next]
             time_next = time + params.update_time_interval
-            job_list = [
-                job_name
-                for job_name, value in self.waiting_jobs.items()
-                if value["arrival_time"] < time_next
-            ]  # jobs arrive before time_next
-            for job_name in job_list:
-                deploy_time = max(self.waiting_jobs[job_name]["arrival_time"], time)
-                if self.deploy_job(job_name, deploy_time):
-                    # if deployment success
-                    self.allocate_flows(job_name, deploy_time)
-                    del self.waiting_jobs[job_name]
-                    print(f"[INFO] Job {job_name} deployed.")
-                else:
-                    break
-            released_jobs = self.traffic_manager.update_traffic(time_next)
-            for job_name in released_jobs:
-                self.gpu_manager.release_gpu(job_name, time_next)
-                print(f"[INFO]Job {job_name} released.")
+            self.release_job(time_next)
+            self.traffic_manager.update_traffic(time_next)
+            self.deploy_jobs(time, time_next)
+
             if self.method == "ours":
                 solve(self.traffic_manager)
             elif self.method == "cassini":
                 solve_by_cassini(self.traffic_manager)
+
             time = time_next  # proceed to the next time window

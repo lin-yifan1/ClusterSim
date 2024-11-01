@@ -64,13 +64,14 @@ class ClosTopology:
         _, gpu_a = gpu_a.split("-")
         _, gpu_b = gpu_b.split("-")
         gpu_a, gpu_b = int(gpu_a), int(gpu_b)
+        server_a = gpu_a // self.gpus_per_server
         tor_a = gpu_a // (self.servers_per_tor * self.gpus_per_server)
         tor_b = gpu_b // (self.servers_per_tor * self.gpus_per_server)
         route = []
         if tor_a == tor_b:
             return route
         else:
-            spine = gpu_a % self.num_spines
+            spine = ((2**31 - 1) * server_a) % self.num_spines
             route.append(Link(f"ToR-{tor_a}", f"Spine-{spine}"))
             route.append(Link(f"Spine-{spine}", f"ToR-{tor_b}"))
         return route

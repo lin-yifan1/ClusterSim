@@ -31,17 +31,20 @@ class TrafficManager:
         else:
             # if job_name already has flow going through the link
             # then modify intervals
-            intervals = []
-            for interval in self.link_traffic_pattern[link][job_name]["intervals"]:
-                low, high = interval
-                length = high - low
-                intervals.append([low - (high - low), high])
-            self.link_traffic_pattern[link][job_name]["intervals"] = intervals
+            intervals_new = []
+            for interval_1, interval_2 in zip(
+                self.link_traffic_pattern[link][job_name]["intervals"], intervals
+            ):
+                low_1, high_1 = interval_1
+                low_2, high_2 = interval_2
+                length = high_2 - low_2
+                intervals_new.append([low_1 - length, high_1])
+            self.link_traffic_pattern[link][job_name]["intervals"] = intervals_new
 
     def get_traffic_pattern(self, link: Link):
         return self.link_traffic_pattern[link]
 
-    def release_job(self, job_name):
+    def release_single_job(self, job_name):
         # Release job from links
         for jobs in self.link_traffic_pattern.values():
             if job_name in jobs:
@@ -55,9 +58,11 @@ class TrafficManager:
         # delay_dict: {job_name: delay}
         for job_name, delay in delay_dict.items():
             T = 0
+            # find T
             for jobs in self.link_traffic_pattern.values():
                 if job_name in jobs:
                     T = jobs[job_name]["T"]
+                    break
             self.job_time_period[job_name][0] += delay % T
             self.job_time_period[job_name][1] += delay % T
 
@@ -65,23 +70,18 @@ class TrafficManager:
         job_conflicts = cal_job_conflicts(
             self.link_traffic_pattern, self.job_time_period, self.current_time, new_time
         )
-
         # Update each job's end time based on the calculated delay
         for job_name, conflict in job_conflicts.items():
-            for jobs in self.link_traffic_pattern.values():
-                if job_name in jobs:
-                    T = jobs[job_name]["T"]
-            if job_name in self.job_time_period:
-                self.job_time_period[job_name][0] += conflict % T
-                self.job_time_period[job_name][1] += conflict
+            self.job_time_period[job_name][1] += conflict
+        self.current_time = new_time
 
+    def release_jobs(self, new_time):
         ended_jobs = []  # jobs end in time period [current_time, new_time)
         for job_name, time_period in self.job_time_period.items():
             if job_name not in self.ended_jobs and time_period[1] <= new_time:
-                self.release_job(job_name)
+                self.release_single_job(job_name)
                 ended_jobs.append(job_name)
         self.ended_jobs += ended_jobs
-        self.current_time = new_time
         return ended_jobs
 
     def get_job_list(self):

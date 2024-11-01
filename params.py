@@ -1,7 +1,7 @@
-job_num = 50
+job_num = 200
 arrival_rate = 90000  # time unit
 time_slot = 10  # ms
-update_time_interval = 90000  # time unit
+update_time_interval = 360000  # time unit
 
 sizes = [8, 16, 32, 64, 128, 256, 512, 1024]
 cdf_sizes = [0.23, 0.25, 0.36, 0.5, 0.74, 0.88, 0.96, 1.0]

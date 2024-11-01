@@ -1,3 +1,4 @@
+import time
 import numpy as np
 
 
@@ -63,6 +64,7 @@ def cal_link_job_conflicts(jobs, job_time_period, current_time, new_time):
             pair = frozenset([job_name, other_job_name])
             if pair in calculated_pairs:
                 continue
+            start_time = time.time()
             conflict_value = cal_overlap(
                 pattern,
                 other_pattern,
@@ -71,6 +73,7 @@ def cal_link_job_conflicts(jobs, job_time_period, current_time, new_time):
                 current_time,
                 new_time,
             )
+            print(f"Cal link job conflicts: {time.time()-start_time}")
             link_job_conflicts[job_name] += conflict_value
             link_job_conflicts[other_job_name] += conflict_value
             calculated_pairs.add(pair)
@@ -84,6 +87,7 @@ def cal_job_conflicts(link_traffic_pattern, job_time_period, current_time, new_t
     # link_traffic_patter: {link: {job_name: pattern}}
     # Return a {job_name: conflict} dict
     job_conflicts = {}
+    start_time = time.time()
     for link, jobs in link_traffic_pattern.items():
         link_job_conflicts = cal_link_job_conflicts(
             jobs, job_time_period, current_time, new_time
@@ -93,7 +97,7 @@ def cal_job_conflicts(link_traffic_pattern, job_time_period, current_time, new_t
                 job_conflicts[job_name] = max(job_conflicts[job_name], conflict)
             else:
                 job_conflicts[job_name] = conflict
-
+    print(f"Cal job conflicts: {time.time()-start_time}")
     return job_conflicts
 
 

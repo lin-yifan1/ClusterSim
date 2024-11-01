@@ -31,6 +31,6 @@ def run_scipstp(scipstp_path, stp_file, sol_file):
     ]
 
     # Run the scipstp command
-    print(f"[INFO] Solving STP: Problem file located at '{stp_file}'...")
+    # print(f"[INFO] Solving STP: Problem file located at '{stp_file}'...")
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print(f"[INFO] STP Solving Complete: Solution file saved at '{stp_file}'.")
+    # print(f"[INFO] STP Solving Complete: Solution file saved at '{stp_file}'.")
