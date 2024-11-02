@@ -1,3 +1,4 @@
+import time
 from collections import defaultdict
 from utils import cal_job_conflicts
 from simulate.network_elements import Link, ClosTopology
@@ -10,7 +11,13 @@ class TrafficManager:
         self.job_time_period = (
             {}
         )  # Start and end time of each job, {job_name: (start_time, end_time)}
+        self.running_jobs = []
         self.ended_jobs = []  # jobs that already ended
+        self.penalty_time = {}  # amount of time each job's JCT should be added
+
+    def add_job(self, job_name, start_time, end_time):
+        self.running_jobs.append(job_name)
+        self.job_time_period[job_name] = [start_time, end_time]
 
     def add_traffic_pattern(
         self, link: Link, job_name, intervals, T, start_time, end_time
@@ -27,7 +34,6 @@ class TrafficManager:
         }
         if job_name not in self.link_traffic_pattern[link]:
             self.link_traffic_pattern[link][job_name] = pattern
-            self.job_time_period[job_name] = [start_time, end_time]
         else:
             # if job_name already has flow going through the link
             # then modify intervals
@@ -41,9 +47,6 @@ class TrafficManager:
                 intervals_new.append([low_1 - length, high_1])
             self.link_traffic_pattern[link][job_name]["intervals"] = intervals_new
 
-    def get_traffic_pattern(self, link: Link):
-        return self.link_traffic_pattern[link]
-
     def release_single_job(self, job_name):
         # Release job from links
         for jobs in self.link_traffic_pattern.values():
@@ -52,6 +55,8 @@ class TrafficManager:
         self.link_traffic_pattern = {
             link: jobs for link, jobs in self.link_traffic_pattern.items() if jobs != {}
         }  # filter out links with no flows
+        self.running_jobs.remove(job_name)
+        self.ended_jobs.append(job_name)
 
     def update_job_time_periods(self, delay_dict):
         # Update the intervals for each job based on the provided delay dictionary
@@ -72,16 +77,19 @@ class TrafficManager:
         )
         # Update each job's end time based on the calculated delay
         for job_name, conflict in job_conflicts.items():
-            self.job_time_period[job_name][1] += conflict
+            if job_name not in self.penalty_time:
+                self.penalty_time[job_name] = conflict
+            else:
+                self.penalty_time[job_name] += conflict
+        self.update_job_time_periods(job_conflicts)
         self.current_time = new_time
 
     def release_jobs(self, new_time):
         ended_jobs = []  # jobs end in time period [current_time, new_time)
-        for job_name, time_period in self.job_time_period.items():
-            if job_name not in self.ended_jobs and time_period[1] <= new_time:
+        for job_name in self.running_jobs.copy():
+            if self.job_time_period[job_name][1] <= new_time:
                 self.release_single_job(job_name)
                 ended_jobs.append(job_name)
-        self.ended_jobs += ended_jobs
         return ended_jobs
 
     def get_job_list(self):
