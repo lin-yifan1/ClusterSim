@@ -9,6 +9,9 @@ class GPUManager:
         self.job_deployed_time = {}
         self.job_released_time = {}
 
+    def gpu_occupation_rate(self):
+        return sum(1 for job in self.gpu_usage if job is not None) / len(self.gpu_usage)
+
     def assign_gpu_to_job(self, assign_job_name, job_gpu_num, time):
         num_gpu_available = self.gpu_usage.count(None)
         if num_gpu_available < job_gpu_num:
