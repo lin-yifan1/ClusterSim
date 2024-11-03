@@ -106,40 +106,6 @@ class ClosTopology:
             link_set = link_set.union(set(self.get_route(server_1, server_2)))
         return list(link_set)
 
-    def hd_link_list(self, job_gpu_list):
-        # TODO: to be removed
-        # job_gpu_list: list of GPUs occupied by the job
-        # return link list the job occupies for HD AllReduce
-        server_list = natsorted(
-            list({self.get_server_for_gpu(gpu) for gpu in job_gpu_list})
-        )
-        num_servers = len(server_list)
-        if num_servers == 1:
-            return []
-
-        communication_pairs = []
-        r = num_servers - 2 ** (int(math.log2(num_servers)))
-        # Stage 1
-        for i in range(0, r):
-            communication_pairs.append((server_list[2 * i], server_list[2 * i + 1]))
-        removed_servers = [server_list[2 * i + 1] for i in range(0, r)]
-        remain_servers = [
-            server for server in server_list if server not in removed_servers
-        ]
-        # Stage 2
-        step = 1
-        while step < num_servers - r:
-            for i in range(0, num_servers - r, step * 2):
-                for j in range(step):
-                    communication_pairs.append(
-                        (remain_servers[i + j], remain_servers[i + j + step])
-                    )
-            step *= 2
-        link_set = set()
-        for server_1, server_2 in communication_pairs:
-            link_set = link_set.union(set(self.get_route(server_1, server_2)))
-        return list(link_set)
-
     def group_by_rank(self, job_gpu_list, rank_list):
         # group GPUs into lists by their ranks
         rank_dict = defaultdict(list)
@@ -149,14 +115,14 @@ class ClosTopology:
 
     def hd_communication_pairs(self, job_gpu_list):
         # job_gpu_list: list of GPUs occupied by the job
-        # Return GPU communication pairs in HD AllReduce
-        # Note that pairs are ordered,
+        # Return: GPU communication pairs in HD AllReduce
+        # Note that pairs are ordered:
         # (GPU-0, GPU-1) and (GPU-0, GPU-1) are two different pairs
-        def hd_comm_pairs(gpu_list):
+        def hd_comm_pairs(gpu_group):
             # gpu_list: group of GPUs with the same rank
             # return communication pairs of HD AllReduce
-            gpu_list = natsorted(gpu_list)
-            num_gpus = len(gpu_list)
+            gpu_group = natsorted(gpu_group)
+            num_gpus = len(gpu_group)
             if num_gpus == 1:
                 return []
 
@@ -164,10 +130,10 @@ class ClosTopology:
             r = num_gpus - 2 ** (int(math.log2(num_gpus)))
             # Stage 1
             for i in range(0, r):
-                communication_pairs.append((gpu_list[2 * i], gpu_list[2 * i + 1]))
-                communication_pairs.append((gpu_list[2 * i + 1], gpu_list[2 * i]))
-            removed_gpus = [gpu_list[2 * i + 1] for i in range(0, r)]
-            remain_gpus = [server for server in gpu_list if server not in removed_gpus]
+                communication_pairs.append((gpu_group[2 * i], gpu_group[2 * i + 1]))
+                communication_pairs.append((gpu_group[2 * i + 1], gpu_group[2 * i]))
+            removed_gpus = [gpu_group[2 * i + 1] for i in range(0, r)]
+            remain_gpus = [server for server in gpu_group if server not in removed_gpus]
             # Stage 2
             step = 1
             while step < num_gpus - r:
@@ -182,18 +148,23 @@ class ClosTopology:
                 step *= 2
             return communication_pairs
 
-        rank_list = [self.get_gpu_local_rank(gpu) for gpu in job_gpu_list]
+        max_dp_ways = 4
+        total_gpu_num = len(job_gpu_list)
+        dp_ways = min(total_gpu_num // self.gpus_per_server, max_dp_ways)
+        gpu_num_per_dp_way = total_gpu_num // dp_ways
+        job_gpu_list = natsorted(job_gpu_list)
+        dp_allreduce_gpu_groups = [
+            job_gpu_list[i::gpu_num_per_dp_way] for i in range(gpu_num_per_dp_way)
+        ]
         comm_pairs = []
-        for gpu_group in self.group_by_rank(job_gpu_list, rank_list):
+        for gpu_group in dp_allreduce_gpu_groups:
             comm_pairs += hd_comm_pairs(gpu_group)
         return comm_pairs
 
 
 if __name__ == "__main__":
     topology = ClosTopology()
-    print("GPU-0 is under", topology.get_server_for_gpu("GPU-0"))
-    print("GPU-120 is under", topology.get_server_for_gpu("GPU-120"))
-    route = topology.get_route(
-        topology.get_server_for_gpu("GPU-0"), topology.get_server_for_gpu("GPU-120")
-    )
-    print(route)
+    gpu_list = [f"GPU-{i}" for i in range(16)]
+    print(topology.hd_communication_pairs(gpu_list))
+    gpu_list = [f"GPU-{i}" for i in range(64)]
+    print(topology.hd_communication_pairs(gpu_list))

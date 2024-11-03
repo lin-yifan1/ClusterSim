@@ -1,4 +1,4 @@
-job_num = 300
+job_num = 2000
 arrival_rate = 90000  # time unit
 time_slot = 10  # ms
 update_time_interval = 360000  # time unit
