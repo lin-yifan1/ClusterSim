@@ -1,4 +1,8 @@
-import time
+import os
+import networkx as nx
+from itertools import combinations
+import matplotlib.pyplot as plt
+import numpy as np
 from collections import defaultdict
 from utils import cal_job_conflicts
 from simulate.network_elements import Link, ClosTopology
@@ -112,6 +116,48 @@ class TrafficManager:
                     end - start for start, end in pattern["intervals"]
                 )
         return job_duration
+
+    def get_conflict_graph(self):
+        conflict_graph = nx.Graph()
+        for jobs in self.link_traffic_pattern.values():
+            link_job_list = jobs.keys()
+            for job_1, job_2 in combinations(link_job_list, 2):
+                if conflict_graph.has_edge(job_1, job_2):
+                    conflict_graph[job_1][job_2]["weight"] += 1
+                else:
+                    conflict_graph.add_edge(job_1, job_2, weight=1)
+        return conflict_graph
+
+    def draw_conflict_graph(self, file_dir):
+        conflict_graph = self.get_conflict_graph()
+        pos = nx.spring_layout(conflict_graph, seed=10396953)
+
+        fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
+
+        nx.draw_networkx_nodes(conflict_graph, pos, ax=ax0, node_size=20)
+        # edges = conflict_graph.edges(data=True)
+        # edge_widths = [edge[2]["weight"] for edge in edges]
+        # nx.draw_networkx_edges(
+        #     conflict_graph, pos, width=edge_widths, edge_color="gray"
+        # )
+        nx.draw_networkx_edges(conflict_graph, pos, ax=ax0, alpha=0.4)
+        edge_labels = nx.get_edge_attributes(conflict_graph, "weight")
+        nx.draw_networkx_edge_labels(
+            conflict_graph, pos, edge_labels=edge_labels, ax=ax0
+        )
+        ax0.set_title("Conflict Graph")
+        ax0.set_axis_off()
+
+        degree_sequence = sorted((d for n, d in conflict_graph.degree()), reverse=True)
+        ax1.bar(*np.unique(degree_sequence, return_counts=True))
+        ax1.set_title("Degree histogram")
+        ax1.set_xlabel("Degree")
+        ax1.set_ylabel("# of Nodes")
+
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
+        file_path = os.path.join(file_dir, f"{self.current_time}.png")
+        fig.savefig(file_path, format="png")
 
 
 if __name__ == "__main__":
