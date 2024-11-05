@@ -106,18 +106,10 @@ class ClosTopology:
             link_set = link_set.union(set(self.get_route(server_1, server_2)))
         return list(link_set)
 
-    def group_by_rank(self, job_gpu_list, rank_list):
-        # group GPUs into lists by their ranks
-        rank_dict = defaultdict(list)
-        for gpu, rank in zip(job_gpu_list, rank_list):
-            rank_dict[rank].append(gpu)
-        return list(rank_dict.values())
-
-    def hd_communication_pairs(self, job_gpu_list):
+    def hd_comm_link_list(self, job_gpu_list):
         # job_gpu_list: list of GPUs occupied by the job
-        # Return: GPU communication pairs in HD AllReduce
-        # Note that pairs are ordered:
-        # (GPU-0, GPU-1) and (GPU-0, GPU-1) are two different pairs
+        # Return: Links occupied in HD AllReduce process
+        # Note that same link may appear multiple times if it appears in different AllReduce ops
         def hd_comm_pairs(gpu_group):
             # gpu_list: group of GPUs with the same rank
             # return communication pairs of HD AllReduce
@@ -148,6 +140,13 @@ class ClosTopology:
                 step *= 2
             return communication_pairs
 
+        def hd_comm_link_set(gpu_group):
+            link_set = set()
+            for pair in hd_comm_pairs(gpu_group):
+                route = self.get_gpu_route(*pair)
+                link_set = link_set.union(set(route))
+            return link_set
+
         max_dp_ways = 4
         total_gpu_num = len(job_gpu_list)
         dp_ways = min(total_gpu_num // self.gpus_per_server, max_dp_ways)
@@ -156,15 +155,13 @@ class ClosTopology:
         dp_allreduce_gpu_groups = [
             job_gpu_list[i::gpu_num_per_dp_way] for i in range(gpu_num_per_dp_way)
         ]
-        comm_pairs = []
+        comm_links = []
         for gpu_group in dp_allreduce_gpu_groups:
-            comm_pairs += hd_comm_pairs(gpu_group)
-        return comm_pairs
+            comm_links += list(hd_comm_link_set(gpu_group))
+        return comm_links
 
 
 if __name__ == "__main__":
     topology = ClosTopology()
-    gpu_list = [f"GPU-{i}" for i in range(16)]
-    print(topology.hd_communication_pairs(gpu_list))
-    gpu_list = [f"GPU-{i}" for i in range(64)]
-    print(topology.hd_communication_pairs(gpu_list))
+    gpu_list = [f"GPU-{i}" for i in range(0, 128)]
+    print(topology.hd_comm_link_list(gpu_list))

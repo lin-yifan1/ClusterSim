@@ -72,17 +72,16 @@ class Simulator:
             # TODO
             link_list = self.topology.ring_link_list(job_gpu_list)
         else:
-            gpu_comm_pairs = self.topology.hd_communication_pairs(job_gpu_list)
-            for gpu_pair in gpu_comm_pairs:
-                for link in self.topology.get_gpu_route(*gpu_pair):
-                    self.traffic_manager.add_traffic_pattern(
-                        link,
-                        job_name,
-                        pattern["intervals"],
-                        pattern["T"],
-                        time,
-                        time + self.jobs[job_name]["duration"],
-                    )
+            comm_links = self.topology.hd_comm_link_list(job_gpu_list)
+            for link in comm_links:
+                self.traffic_manager.add_traffic_pattern(
+                    link,
+                    job_name,
+                    pattern["intervals"],
+                    pattern["T"],
+                    time,
+                    time + self.jobs[job_name]["duration"],
+                )
 
     def deploy_jobs(self, time, time_next):
         for job_name in self.waiting_jobs.copy():
