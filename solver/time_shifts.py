@@ -21,8 +21,7 @@ def cal_time_shifts(traffic_manager: TrafficManager):
             time_shifts[link][job_name] = (
                 start_point - (start_time + interval_start)
             ) % T
-            start, low = pattern["intervals"][0]
-            interval_len = low - start
+            interval_len = pattern["intervals"][0][1] - pattern["intervals"][0][0]
             start_point += interval_len
     return time_shifts
 

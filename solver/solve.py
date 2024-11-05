@@ -49,3 +49,13 @@ def solve_by_cassini(traffic_manager: TrafficManager):
     for subgraph in subgraphs:
         time_shifts.update(bfs_unify_time_shift(subgraph))
     traffic_manager.update_job_time_periods(time_shifts)
+
+
+def solve_by_max_cut(traffic_manager: TrafficManager):
+    conflict_graph = traffic_manager.get_conflict_graph()
+    subgraphs = [
+        conflict_graph.subgraph(c).copy()
+        for c in nx.connected_components(conflict_graph)
+    ]
+    for subgraph in subgraphs:
+        pass
