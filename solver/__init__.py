@@ -5,4 +5,5 @@ from .graph_constructor import (
 )
 from .time_shifts import cal_time_shifts
 from .unify_time_shifts import bfs_unify_time_shift
-from .solve import solve, solve_by_cassini
+from .solve import solve, solve_by_cassini, solve_by_max_cut
+from .weighted_max_cut import cal_time_shift_by_max_k_cut

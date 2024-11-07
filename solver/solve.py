@@ -7,6 +7,7 @@ from .graph_constructor import (
     construct_bigraph_from_traffic_manager,
 )
 from .unify_time_shifts import bfs_unify_time_shift
+from .weighted_max_cut import cal_time_shift_by_max_k_cut
 from utils import run_scipstp
 from config import stp_file_dir, stp_solution_dir, scipstp_path_full
 
@@ -51,11 +52,13 @@ def solve_by_cassini(traffic_manager: TrafficManager):
     traffic_manager.update_job_time_periods(time_shifts)
 
 
-def solve_by_max_cut(traffic_manager: TrafficManager):
+def solve_by_max_cut(traffic_manager: TrafficManager, K=5):
     conflict_graph = traffic_manager.get_conflict_graph()
     subgraphs = [
         conflict_graph.subgraph(c).copy()
         for c in nx.connected_components(conflict_graph)
     ]
+    time_shifts = {}
     for subgraph in subgraphs:
-        pass
+        time_shifts.update(cal_time_shift_by_max_k_cut(traffic_manager, subgraph, K))
+    traffic_manager.update_job_time_periods(time_shifts)

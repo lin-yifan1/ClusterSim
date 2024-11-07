@@ -1,6 +1,9 @@
 import os
 import networkx as nx
 from itertools import combinations
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import defaultdict
@@ -12,6 +15,7 @@ class TrafficManager:
     def __init__(self):
         self.current_time = 0
         self.link_traffic_pattern = {}  # A {link: {job_name: pattern}} dict
+        self.job_traffic_pattern = {}  # {job_name: pattern}
         self.job_time_period = (
             {}
         )  # Start and end time of each job, {job_name: (start_time, end_time)}
@@ -50,6 +54,29 @@ class TrafficManager:
                 length = high_2 - low_2
                 intervals_new.append([low_1 - length, high_1])
             self.link_traffic_pattern[link][job_name]["intervals"] = intervals_new
+
+    def unify_traffic_pattern(self):
+        self.job_traffic_pattern = {}
+        for link, jobs in self.link_traffic_pattern.items():
+            for job_name, pattern in jobs.items():
+                if job_name not in self.job_traffic_pattern:
+                    self.job_traffic_pattern[job_name] = pattern
+                elif (
+                    pattern["intervals"][0][0]
+                    < self.job_traffic_pattern[job_name]["intervals"][0][0]
+                ):
+                    self.job_traffic_pattern[job_name]["intervals"][0][0] = pattern[
+                        "intervals"
+                    ][0][0]
+        for link, jobs in self.link_traffic_pattern.items():
+            for job_name, pattern in jobs.items():
+                if (
+                    pattern["intervals"][0][0]
+                    > self.job_traffic_pattern[job_name]["intervals"][0][0]
+                ):
+                    self.link_traffic_pattern[link][job_name]["intervals"][0][0] = (
+                        self.job_traffic_pattern[job_name]["intervals"][0][0]
+                    )
 
     def release_single_job(self, job_name):
         # Release job from links
@@ -132,27 +159,20 @@ class TrafficManager:
         conflict_graph = self.get_conflict_graph()
         pos = nx.spring_layout(conflict_graph, seed=10396953)
 
-        fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(8, 8))
 
-        nx.draw_networkx_nodes(conflict_graph, pos, ax=ax0, node_size=20)
-        # edges = conflict_graph.edges(data=True)
-        # edge_widths = [edge[2]["weight"] for edge in edges]
-        # nx.draw_networkx_edges(
-        #     conflict_graph, pos, width=edge_widths, edge_color="gray"
-        # )
-        nx.draw_networkx_edges(conflict_graph, pos, ax=ax0, alpha=0.4)
+        nx.draw_networkx_nodes(conflict_graph, pos, ax=ax, node_size=20)
+        label_pos = {node: (x, y + 0.03) for node, (x, y) in pos.items()}
+        nx.draw_networkx_labels(conflict_graph, label_pos, ax=ax, font_size=8)
+
+        nx.draw_networkx_edges(conflict_graph, pos, ax=ax, alpha=0.4)
         edge_labels = nx.get_edge_attributes(conflict_graph, "weight")
         nx.draw_networkx_edge_labels(
-            conflict_graph, pos, edge_labels=edge_labels, ax=ax0
+            conflict_graph, pos, edge_labels=edge_labels, ax=ax
         )
-        ax0.set_title("Conflict Graph")
-        ax0.set_axis_off()
 
-        degree_sequence = sorted((d for n, d in conflict_graph.degree()), reverse=True)
-        ax1.bar(*np.unique(degree_sequence, return_counts=True))
-        ax1.set_title("Degree histogram")
-        ax1.set_xlabel("Degree")
-        ax1.set_ylabel("# of Nodes")
+        ax.set_title("Conflict Graph")
+        ax.set_axis_off()
 
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)

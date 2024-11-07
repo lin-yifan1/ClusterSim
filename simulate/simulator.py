@@ -5,7 +5,7 @@ import params
 from datetime import datetime
 from . import TrafficManager, GPUManager, ClosTopology
 from utils import generate_start_times, sample_from_cdf, sample_from_cdf_continuous
-from solver import solve, solve_by_cassini
+from solver import solve, solve_by_cassini, solve_by_max_cut
 
 
 class Simulator:
@@ -82,6 +82,7 @@ class Simulator:
                     time,
                     time + self.jobs[job_name]["duration"],
                 )
+            self.traffic_manager.unify_traffic_pattern()
 
     def deploy_jobs(self, time, time_next):
         for job_name in self.waiting_jobs.copy():
@@ -106,21 +107,21 @@ class Simulator:
             print(f"[INFO]Job {job_name} released.")
 
     def run(self):
-        time = 0
-        # count = 0
+        time_count = 0
         while len(self.ended_jobs) < len(self.jobs):
             # operate within timewindow: [time, time_next]
-            time_next = time + params.update_time_interval
+            time = time_count * params.update_time_interval
+            time_next = (time_count + 1) * params.update_time_interval
             self.release_jobs(time_next)
             self.deploy_jobs(time, time_next)
-            self.traffic_manager.update_traffic(time_next)
 
             if self.method == "ours":
                 solve(self.traffic_manager)
             elif self.method == "cassini":
                 solve_by_cassini(self.traffic_manager)
-            # if count % 100 == 0:
-            #     print(f"Current time: {time}")
-            #     print(f"Running jobs: {self.running_jobs}")
-            time = time_next  # proceed to the next time window
-            # count += 1
+            elif self.method == "max_cut":
+                solve_by_max_cut(self.traffic_manager, 8)
+
+            self.traffic_manager.update_traffic(time_next)
+
+            time_count += 1  # proceed to the next time window
