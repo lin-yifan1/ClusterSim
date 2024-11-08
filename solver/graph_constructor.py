@@ -1,6 +1,6 @@
 import re
 import networkx as nx
-from .time_shifts import cal_time_shifts
+from .time_shifts import cal_time_shifts, cal_time_shifts_cassini
 from simulate import TrafficManager
 
 
@@ -17,6 +17,26 @@ def construct_bigraph_from_traffic_manager(traffic_manager: TrafficManager):
 
     # calculate time shifts: {link: {job: shift}}
     time_shifts = cal_time_shifts(traffic_manager)
+    for link, jobs in time_shifts.items():
+        for job_name in jobs.keys():
+            bigraph[link][job_name]["weight"] = time_shifts[link][job_name]
+
+    return bigraph
+
+
+def construct_bigraph_from_traffic_manager_cassini(traffic_manager: TrafficManager):
+    # Construct bipartite graph from TrafficManager (CASSINI)
+    bigraph = nx.Graph()
+    link_list = traffic_manager.get_link_list()
+
+    for link in link_list:
+        bigraph.add_node(link, category="link")
+        for job_name in traffic_manager.link_traffic_pattern[link].keys():
+            bigraph.add_node(job_name, category="job")
+            bigraph.add_edge(job_name, link)
+
+    # calculate time shifts: {link: {job: shift}}
+    time_shifts = cal_time_shifts_cassini(traffic_manager)
     for link, jobs in time_shifts.items():
         for job_name in jobs.keys():
             bigraph[link][job_name]["weight"] = time_shifts[link][job_name]
