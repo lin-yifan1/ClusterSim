@@ -104,7 +104,7 @@ class Simulator:
             self.gpu_manager.release_gpu(job_name, time_next)
             self.running_jobs.remove(job_name)
             self.ended_jobs.append(job_name)
-            print(f"[INFO]Job {job_name} released.")
+            print(f"[INFO] Job {job_name} released.")
 
     def run(self):
         time_count = 0
