@@ -117,7 +117,9 @@ def cal_time_shift_by_max_k_cut(traffic_manager: TrafficManager, G: nx.Graph, K=
             start = traffic_manager.job_time_period[job_name][0]
             pattern = traffic_manager.job_traffic_pattern[job_name]
             T = pattern["T"]
-            interval_start, interval_end = pattern["intervals"][0]
-            time_shifts[job_name] = (start_time_spot - (start + interval_start)) % T
-            start_time_spot = start_time_spot + interval_end - interval_start
+            interval_start = pattern["intervals"][0][0]
+            interval_end = pattern["intervals"][0][1]
+            interval_len = interval_start - interval_end
+            time_shifts[job_name] = (time_spot - (start + interval_start)) % T
+            # start_time_spot = start_time_spot + interval_end - interval_start
     return time_shifts

@@ -5,6 +5,7 @@ from .generate_stp_file import generate_stp_file
 from .graph_constructor import (
     construct_bigraph_from_solution_file,
     construct_bigraph_from_traffic_manager,
+    construct_bigraph_from_traffic_manager_cassini,
 )
 from .unify_time_shifts import bfs_unify_time_shift
 from .weighted_max_cut import cal_time_shift_by_max_k_cut
@@ -44,7 +45,7 @@ def solve(traffic_manager: TrafficManager):
 
 
 def solve_by_cassini(traffic_manager: TrafficManager):
-    bigraph = construct_bigraph_from_traffic_manager(traffic_manager)
+    bigraph = construct_bigraph_from_traffic_manager_cassini(traffic_manager)
     subgraphs = [bigraph.subgraph(c).copy() for c in nx.connected_components(bigraph)]
     time_shifts = {}
     for subgraph in subgraphs:
