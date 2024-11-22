@@ -1,18 +1,25 @@
 import json
 from collections import Counter
+from typing import List, Union, Dict
 
 
 class GPUManager:
+    gpu_usage: List[Union[str, None]]
+    job_deployed_time: Dict[str, int]
+    job_released_time: Dict[str, int]
+
     def __init__(self, num_gpu=3072):
-        # List to keep track of each GPU's job_name
-        self.gpu_usage = [None] * num_gpu
+        self.gpu_usage = [None] * num_gpu  # List to keep track of each GPU's job_name
         self.job_deployed_time = {}
         self.job_released_time = {}
 
-    def gpu_occupation_rate(self):
+    def gpu_occupation_rate(self) -> float:
         return sum(1 for job in self.gpu_usage if job is not None) / len(self.gpu_usage)
 
-    def assign_gpu_to_job(self, assign_job_name, job_gpu_num, time):
+    def assign_gpu_to_job(self, job_name: str, job_gpu_num: int, time: int) -> bool:
+        """
+        Try to allocate GPUs to the job requiring a number of GPUs
+        """
         num_gpu_available = self.gpu_usage.count(None)
         if num_gpu_available < job_gpu_num:
             return False
@@ -24,14 +31,14 @@ class GPUManager:
                     assigned_count += 1
                 if assigned_count == job_gpu_num:
                     break
-            self.job_deployed_time[assign_job_name] = time
+            self.job_deployed_time[job_name] = time
             return True
 
-    def release_gpu(self, release_job_name, time):
+    def release_gpu(self, job_name: str, time: int):
         for id, job_name in enumerate(self.gpu_usage):
-            if job_name == release_job_name:
+            if job_name == job_name:
                 self.gpu_usage[id] = None
-        self.job_released_time[release_job_name] = time
+        self.job_released_time[job_name] = time
 
     def get_job_npu_occupied(self):
         filtered_gpu_usage = [
@@ -58,26 +65,3 @@ class GPUManager:
         }
         with open(path, "w") as json_file:
             json.dump(snapshot, json_file, indent=4)
-
-
-if __name__ == "__main__":
-    gpu_manager = GPUManager(num_gpu=8)
-
-    gpu_manager.assign_gpu_to_job("job_1", 3, time=1)
-    gpu_manager.assign_gpu_to_job("job_2", 2, time=2)
-
-    gpu_manager.release_gpu("job_1", time=5)
-
-    gpu_manager.assign_gpu_to_job("job_3", 1, time=6)
-
-    deployment = gpu_manager.get_job_deployment()
-    print("Current GPU deployment:", deployment)
-
-    npu_occupied = gpu_manager.get_job_npu_occupied()
-    print("Job GPU usage count:", npu_occupied)
-
-    job_description = gpu_manager.get_job_description(time=10)
-    print("Job descriptions:", job_description)
-
-    gpu_manager.save_snapshot("snapshot.json", time=10)
-    print("Snapshot saved to 'snapshot.json'")
