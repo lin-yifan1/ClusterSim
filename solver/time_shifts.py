@@ -45,5 +45,5 @@ def cal_time_shifts_cassini(traffic_manager: TrafficManager):
             time_shifts[link][job_name] = (
                 start_point - (start_time + interval_start)
             ) % T
-            start_point += interval_len
+            start_point += interval_len + 10000 // 3
     return time_shifts

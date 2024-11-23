@@ -16,7 +16,9 @@ class GPUManager:
     def gpu_occupation_rate(self) -> float:
         return sum(1 for job in self.gpu_usage if job is not None) / len(self.gpu_usage)
 
-    def assign_gpu_to_job(self, job_name: str, job_gpu_num: int, time: int) -> bool:
+    def assign_gpu_to_job(
+        self, job_name: str, job_gpu_num: int, deploy_time: int
+    ) -> bool:
         """
         Try to allocate GPUs to the job requiring a number of GPUs
         """
@@ -31,14 +33,28 @@ class GPUManager:
                     assigned_count += 1
                 if assigned_count == job_gpu_num:
                     break
-            self.job_deployed_time[job_name] = time
+            self.job_deployed_time[job_name] = deploy_time
             return True
 
     def release_gpu(self, job_name: str, time: int):
+        """
+        Release job
+        """
         for id, job_name in enumerate(self.gpu_usage):
             if job_name == job_name:
                 self.gpu_usage[id] = None
         self.job_released_time[job_name] = time
+
+    def get_job_gpu_list(self, job_name: str) -> List[int]:
+        """
+        Return GPUs occupied by job_name
+        """
+        job_gpu_list = [
+            f"GPU-{id}"
+            for id, occupying_job_name in enumerate(self.gpu_manager.gpu_usage)
+            if occupying_job_name == job_name
+        ]  # GPUs occupied by job_name
+        return job_gpu_list
 
     def get_job_npu_occupied(self):
         filtered_gpu_usage = [

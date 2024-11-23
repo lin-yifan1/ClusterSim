@@ -59,7 +59,10 @@ def solve_by_max_cut(traffic_manager: TrafficManager, K=5):
         conflict_graph.subgraph(c).copy()
         for c in nx.connected_components(conflict_graph)
     ]
+    time_shift = {}
     time_shifts = {}
     for subgraph in subgraphs:
-        time_shifts.update(cal_time_shift_by_max_k_cut(traffic_manager, subgraph, K))
+        time_shift = cal_time_shift_by_max_k_cut(traffic_manager, subgraph, K)
+        time_shifts.update(time_shift)
     traffic_manager.update_job_time_periods(time_shifts)
+    return time_shifts

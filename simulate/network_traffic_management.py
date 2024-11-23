@@ -72,8 +72,8 @@ class TrafficManager:
 
     def unify_traffic_pattern(self):
         """
-        Unify traffic intervals of the same job
-        Should be called after update of link_traffic_pattern
+        Unify traffic intervals of the same job.
+        Should be called after update of link_traffic_pattern.
         """
         self.job_traffic_pattern = {}
         # Update job traffic pattern
@@ -105,8 +105,9 @@ class TrafficManager:
 
     def update_traffic(self, time_next: int) -> Dict[str, int]:
         """
-        Update penalty and current_time
-        Return job_conflicts
+        Update penalty in time window [current_time, time_next],
+        and then update current_time to time_next.
+        Return job_conflicts.
         """
         job_conflicts = cal_job_conflicts(
             self.link_traffic_pattern,
@@ -138,7 +139,7 @@ class TrafficManager:
         self.running_jobs.remove(job_name)
         self.ended_jobs.append(job_name)
 
-    def release_jobs(self, time_next: int):
+    def release_jobs(self, time_next: int) -> List[str]:
         """
         Release jobs finish in time window [current_time, time_next]
         """
